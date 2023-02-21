@@ -22,7 +22,7 @@ index.setSettings({
 const SearchBar = () => {
 
     const mounted = useRef(false)
-    const [searchText, setSearchText] = useState("")
+    // const [searchText, setSearchText] = useState("")
     const [searchResult, setSearchResult] = useState<Array<any>>()
     useEffect(()=>{
         if(mounted.current === false){
@@ -36,26 +36,21 @@ const SearchBar = () => {
             ).subscribe((val) => {
                 // call API
                 if(val.length == 0){
-                    setSearchText("")
                     setSearchResult([])
                 }else{
                     index
                     .search(val)
                     .then(({ hits }) => {
                         if(hits.length > 0){
-                            // hits.forEach((item: any)=>{
-                            //     item.node.product_name = item.node.product_name.replaceAll(val,<span className="red">val</span>)
-                            // })
                             setSearchResult(hits)
                         }else{
-                            setSearchText(val)
                             setSearchResult([])
                         }
                         
-                        console.log(hits);
+                        // console.log(hits);
                     })
                     .catch(err => {
-                        console.log(err);
+                        // console.log(err);
                     });
                 }
             });
@@ -78,27 +73,24 @@ const SearchBar = () => {
                         }
 
                         if(input.value.length == 0){
-                            setSearchText("")
                             setSearchResult([])
                         }else{
                             index
                             .search(input.value)
                             .then(({ hits }) => {
                                 if(hits.length > 0){
-                                    setSearchText(input.value)
                                     // hits.forEach((item: any)=>{
                                     //     item.node.product_name = item.node.product_name.replaceAll(input.value,<span className="red">input.value</span>)
                                     // })
                                     setSearchResult(hits)
                                 }else{
-                                    setSearchText("")
                                     setSearchResult([])
                                 }
                                 
-                                console.log(hits);
+                                // console.log(hits);
                             })
                             .catch(err => {
-                                console.log(err);
+                                // console.log(err);
                             });
                         }
                     }
@@ -165,7 +157,6 @@ const SearchBar = () => {
                     if(curSelectedItem){
 
                         input.value = curSelectedItem.childNodes[1].innerText
-                        // setSearchResult([])
                         const searchResult = document.querySelector("#searchResult")
                         if(searchResult && !searchResult.classList.contains("hidden")){
                             searchResult.classList.toggle("hidden")
@@ -173,6 +164,17 @@ const SearchBar = () => {
                     }
                 }
             })
+        }else{
+            //highlight搜尋建議
+            const productTitleList = document.querySelectorAll(".productTitle") as NodeListOf<HTMLElement>
+            const input: HTMLInputElement | null = document.querySelector("#default-search")
+            if(productTitleList && input){
+                productTitleList.forEach(elem => {
+                    const regex = new RegExp(`\\b(${input.value})`, "gi");
+                    elem.innerHTML = elem.innerText.replaceAll(regex,'<span class="text-red-400">$1</span>')
+                })
+            }
+            
         }
     },[searchResult])
 
@@ -239,7 +241,7 @@ const SearchBar = () => {
                                                     <li>
                                                         <div className="h-[42px] p-[5px] flex items-center rounded" data-index={i} onMouseEnter={(e)=>handleMouseEnter(e)} onMouseLeave={(e)=>handleMouseLeave(e)} onClick={(e)=>handleMouseClick(e)}>
                                                             <img src={require('./1.jpg')} alt=""  className="rounded-full h-full "/>
-                                                            <span className="inline-block grow text-left text-sm font-bold ml-[12px]">{obj.node.product_name}</span>
+                                                            <span className="productTitle inline-block grow text-left text-sm font-bold ml-[12px]">{obj.node.product_name}</span>
                                                             <span className="text-xs inline-block px-[10px] pt-[2px]">€{obj.node.price}</span>
                                                             <span className="inline-block">&gt;</span>
                                                         </div>
