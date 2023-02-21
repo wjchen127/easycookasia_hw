@@ -227,7 +227,7 @@ const SearchBar = () => {
                     searchResult && searchResult.length > 0 ? (
                         <div id="searchResult" className="absolute w-full rounded-lg bg-white px-[15px] py-[10px] mt-[10px]">
                         
-                            <div className="flex justify-between">
+                            <div className="flex justify-between mb-[5px]">
                                 <span className="text-xs  text-[#9d9d9d] font-bold">Product</span>
                                 <span className="text-xs text-[#fe5b30] font-bold">See all</span>
                             </div>
