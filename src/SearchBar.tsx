@@ -4,23 +4,25 @@ import { fromEvent, filter, debounceTime, distinctUntilChanged, Observable, map,
 import algoliasearch from 'algoliasearch';
 const client = algoliasearch("4INBZ089JX", "600cf7a70cda6c98f8cb99da4539225c");
 const index = client.initIndex("test");
+index.setSettings({
+    typoTolerance: false, 
+    disableTypoToleranceOnAttributes: [
+        'node.product_name'
+    ],
+    searchableAttributes: ['node.product_name'],
+    attributesToRetrieve: ['node.product_name', 'node.price'],
+    hitsPerPage: 10,
+    queryType: 'prefixLast',
+    disablePrefixOnAttributes: [
+        ''
+    ]
+})
 
-// interface searchObj extends Object{
-//     objectID: string,
-//     node:{
-//         price: string,
-//         product_name: string
-//     }
-// }
-// function preventDefault<T extends Event>(): MonoTypeOperatorFunction<T> {
-//     return tap(e => {
-//         e.preventDefault();
-//     });
-// }
 
 const SearchBar = () => {
 
     const mounted = useRef(false)
+    const [searchText, setSearchText] = useState("")
     const [searchResult, setSearchResult] = useState<Array<any>>()
     useEffect(()=>{
         if(mounted.current === false){
@@ -34,18 +36,19 @@ const SearchBar = () => {
             ).subscribe((val) => {
                 // call API
                 if(val.length == 0){
+                    setSearchText("")
                     setSearchResult([])
                 }else{
                     index
-                    .search(val, {
-                        restrictSearchableAttributes: [
-                            'node.product_name'
-                        ],
-                    })
+                    .search(val)
                     .then(({ hits }) => {
                         if(hits.length > 0){
+                            // hits.forEach((item: any)=>{
+                            //     item.node.product_name = item.node.product_name.replaceAll(val,<span className="red">val</span>)
+                            // })
                             setSearchResult(hits)
                         }else{
+                            setSearchText(val)
                             setSearchResult([])
                         }
                         
@@ -63,7 +66,7 @@ const SearchBar = () => {
                     return e
                 }),
                 distinctUntilChanged(),
-                debounceTime(300),
+                debounceTime(500),
             ).subscribe((e) => {
                 if(e.key === "Backspace" || e.key === "Delete"){
                     const input: HTMLInputElement | null = document.querySelector("#default-search")
@@ -71,22 +74,24 @@ const SearchBar = () => {
 
                         const searchResult = document.querySelector("#searchResult")
                         if(searchResult && searchResult.classList.contains("hidden")){
-                            searchResult.classList.toggle("hidden")
+                            searchResult.classList.remove("hidden")
                         }
 
                         if(input.value.length == 0){
+                            setSearchText("")
                             setSearchResult([])
                         }else{
                             index
-                            .search(input.value, {
-                                restrictSearchableAttributes: [
-                                    'node.product_name'
-                                ],
-                            })
+                            .search(input.value)
                             .then(({ hits }) => {
                                 if(hits.length > 0){
+                                    setSearchText(input.value)
+                                    // hits.forEach((item: any)=>{
+                                    //     item.node.product_name = item.node.product_name.replaceAll(input.value,<span className="red">input.value</span>)
+                                    // })
                                     setSearchResult(hits)
                                 }else{
+                                    setSearchText("")
                                     setSearchResult([])
                                 }
                                 
@@ -114,7 +119,7 @@ const SearchBar = () => {
 
                     const searchResult = document.querySelector("#searchResult")
                     if(searchResult && searchResult.classList.contains("hidden")){
-                        searchResult.classList.toggle("hidden")
+                        searchResult.classList.remove("hidden")
                         return
                     }
 
@@ -130,20 +135,24 @@ const SearchBar = () => {
                                 if(e.key === "ArrowUp" && curSelectedIndex >0){
                                     //除掉舊的css跟data
                                     curSelectedItem.dataset.selected = ""
-                                    curSelectedItem.classList.toggle("bg-gray-100")
+                                    curSelectedItem.classList.remove("bg-gray-100")
 
                                     const nextSelected = listItem[curSelectedIndex-1]
                                     nextSelected.dataset.selected = "true"
-                                    nextSelected.classList.toggle("bg-gray-100")
+                                    if(!nextSelected.classList.contains("bg-gray-100")){
+                                        nextSelected.classList.toggle("bg-gray-100")
+                                    }
                                     input.value = nextSelected.childNodes[1].innerText
                                 }else if(e.key === "ArrowDown" && curSelectedIndex < listItem.length-1){
                                     //除掉舊的css跟data
                                     curSelectedItem.dataset.selected = ""
-                                    curSelectedItem.classList.toggle("bg-gray-100")
+                                    curSelectedItem.classList.remove("bg-gray-100")
 
                                     const nextSelected = listItem[curSelectedIndex+1]
                                     nextSelected.dataset.selected = "true"
-                                    nextSelected.classList.toggle("bg-gray-100")
+                                    if(!nextSelected.classList.contains("bg-gray-100")){
+                                        nextSelected.classList.toggle("bg-gray-100")
+                                    }
                                     input.value = nextSelected.childNodes[1].innerText
                                 }
                             }
@@ -167,6 +176,40 @@ const SearchBar = () => {
         }
     },[searchResult])
 
+
+    function handleMouseEnter(e: React.MouseEvent<HTMLDivElement, MouseEvent>){
+        if(e.currentTarget){ 
+            if(e.currentTarget.dataset.selected !== "true"){
+                e.currentTarget.classList.toggle("bg-gray-100")
+            }
+            
+        }
+    }
+    function handleMouseLeave(e: React.MouseEvent<HTMLDivElement, MouseEvent>){
+        if(e.currentTarget && e.currentTarget.classList.contains("bg-gray-100") && e.currentTarget.dataset.selected !== "true"){
+            e.currentTarget.classList.remove("bg-gray-100")
+        }
+    }
+
+    function handleMouseClick(e: React.MouseEvent<HTMLDivElement, MouseEvent>){
+        
+        const curSelectedItem: any = document.querySelector("#searchResultList > ul > li > div[data-selected='true']")
+        if(curSelectedItem){
+            curSelectedItem.dataset.selected = ""
+            curSelectedItem.classList.remove("bg-gray-100")
+        }
+
+
+        e.currentTarget.dataset.selected = "true"
+
+        const input = document.querySelector("#default-search") as HTMLInputElement
+        input.value = (e.currentTarget.childNodes[1] as HTMLElement).innerText
+        const searchResult = document.querySelector("#searchResult")
+        if(searchResult && !searchResult.classList.contains("hidden")){
+            searchResult.classList.toggle("hidden")
+        }  
+        
+    }
 
     return (
         <div className="grid place-items-center w-screen h-screen">
@@ -194,7 +237,7 @@ const SearchBar = () => {
                                             searchResult.map((obj,i) => {
                                                 return (
                                                     <li>
-                                                        <div className="h-[42px] p-[5px] flex items-center rounded" data-index={i}>
+                                                        <div className="h-[42px] p-[5px] flex items-center rounded" data-index={i} onMouseEnter={(e)=>handleMouseEnter(e)} onMouseLeave={(e)=>handleMouseLeave(e)} onClick={(e)=>handleMouseClick(e)}>
                                                             <img src={require('./1.jpg')} alt=""  className="rounded-full h-full "/>
                                                             <span className="inline-block grow text-left text-sm font-bold ml-[12px]">{obj.node.product_name}</span>
                                                             <span className="text-xs inline-block px-[10px] pt-[2px]">€{obj.node.price}</span>
