@@ -59,6 +59,7 @@ const SearchBar = () => {
                         }
 
                         if(inputRef.current.value.length == 0){
+                            console.log("empty")
                             setSearchText("")
                         }else{
                             setSearchText(inputRef.current.value)
@@ -169,6 +170,8 @@ const SearchBar = () => {
                     // console.log(err);
                 });
             }
+        }else{
+            setSearchResult([])
         }
     },[searchText])
 
