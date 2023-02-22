@@ -1,6 +1,5 @@
-import React, {FormEvent, KeyboardEvent, useEffect, useRef, useState} from "react";
-import { fromEvent, filter, debounceTime, distinctUntilChanged, Observable, map, takeLast, find, throttleTime} from'rxjs';
-// const algoliasearch = require("algoliasearch");
+import React, {useEffect, useRef, useState} from "react";
+import { fromEvent, debounceTime, distinctUntilChanged, Observable, map, throttleTime} from'rxjs';
 import algoliasearch from 'algoliasearch';
 const client = algoliasearch("4INBZ089JX", "600cf7a70cda6c98f8cb99da4539225c");
 const index = client.initIndex("test");
@@ -15,14 +14,15 @@ index.setSettings({
     queryType: 'prefixLast',
     disablePrefixOnAttributes: [
         ''
-    ]
+    ],
 })
 
 
 const SearchBar = () => {
 
     const mounted = useRef(false)
-    // const [searchText, setSearchText] = useState("")
+    const inputRef = useRef<HTMLInputElement>(null)
+    const [searchText, setSearchText] = useState("")
     const [searchResult, setSearchResult] = useState<Array<any>>()
     useEffect(()=>{
         if(mounted.current === false){
@@ -30,68 +30,38 @@ const SearchBar = () => {
 
             const fetchSearchSuggestion$: Observable<Event> = fromEvent(document.querySelector("#default-search") as HTMLInputElement, 'keypress')
             fetchSearchSuggestion$.pipe(
-                map(e => (e.target as HTMLInputElement).value),
-                distinctUntilChanged(),
                 debounceTime(300),
+                map(() => inputRef.current === null ? "" : inputRef.current.value),
+                distinctUntilChanged(),
             ).subscribe((val) => {
                 // call API
                 if(val.length == 0){
-                    setSearchResult([])
+                    setSearchText("")
                 }else{
-                    index
-                    .search(val)
-                    .then(({ hits }) => {
-                        if(hits.length > 0){
-                            setSearchResult(hits)
-                        }else{
-                            setSearchResult([])
-                        }
-                        
-                        // console.log(hits);
-                    })
-                    .catch(err => {
-                        // console.log(err);
-                    });
+                    setSearchText(val)
                 }
             });
 
             const HandleDelAndBackSpace$: Observable<Event> = fromEvent(document.querySelector("#default-search") as HTMLInputElement, 'keydown')
             HandleDelAndBackSpace$.pipe(
+                debounceTime(300),
                 map((e: any) => {
                     return e
                 }),
                 distinctUntilChanged(),
-                debounceTime(500),
             ).subscribe((e) => {
                 if(e.key === "Backspace" || e.key === "Delete"){
-                    const input: HTMLInputElement | null = document.querySelector("#default-search")
-                    if(input){
+                    if(inputRef.current){
 
                         const searchResult = document.querySelector("#searchResult")
                         if(searchResult && searchResult.classList.contains("hidden")){
                             searchResult.classList.remove("hidden")
                         }
 
-                        if(input.value.length == 0){
-                            setSearchResult([])
+                        if(inputRef.current.value.length == 0){
+                            setSearchText("")
                         }else{
-                            index
-                            .search(input.value)
-                            .then(({ hits }) => {
-                                if(hits.length > 0){
-                                    // hits.forEach((item: any)=>{
-                                    //     item.node.product_name = item.node.product_name.replaceAll(input.value,<span className="red">input.value</span>)
-                                    // })
-                                    setSearchResult(hits)
-                                }else{
-                                    setSearchResult([])
-                                }
-                                
-                                // console.log(hits);
-                            })
-                            .catch(err => {
-                                // console.log(err);
-                            });
+                            setSearchText(inputRef.current.value)
                         }
                     }
                 }
@@ -123,40 +93,43 @@ const SearchBar = () => {
                         }else{
                             if(curSelectedItem.dataset.index){
                                 const curSelectedIndex = parseInt(curSelectedItem.dataset.index)
-                                const input = document.querySelector("#default-search") as HTMLInputElement
-                                if(e.key === "ArrowUp" && curSelectedIndex >0){
-                                    //除掉舊的css跟data
-                                    curSelectedItem.dataset.selected = ""
-                                    curSelectedItem.classList.remove("bg-gray-100")
-
-                                    const nextSelected = listItem[curSelectedIndex-1]
-                                    nextSelected.dataset.selected = "true"
-                                    if(!nextSelected.classList.contains("bg-gray-100")){
-                                        nextSelected.classList.toggle("bg-gray-100")
+                                if(inputRef.current){
+                                    if(e.key === "ArrowUp" && curSelectedIndex >0){
+                                        //除掉舊的css跟data
+                                        curSelectedItem.dataset.selected = ""
+                                        curSelectedItem.classList.remove("bg-gray-100")
+    
+                                        const nextSelected = listItem[curSelectedIndex-1]
+                                        nextSelected.dataset.selected = "true"
+                                        if(!nextSelected.classList.contains("bg-gray-100")){
+                                            nextSelected.classList.toggle("bg-gray-100")
+                                        }
+                                        inputRef.current.value = nextSelected.childNodes[1].innerText
+                                    }else if(e.key === "ArrowDown" && curSelectedIndex < listItem.length-1){
+                                        //除掉舊的css跟data
+                                        curSelectedItem.dataset.selected = ""
+                                        curSelectedItem.classList.remove("bg-gray-100")
+    
+                                        const nextSelected = listItem[curSelectedIndex+1]
+                                        nextSelected.dataset.selected = "true"
+                                        if(!nextSelected.classList.contains("bg-gray-100")){
+                                            nextSelected.classList.toggle("bg-gray-100")
+                                        }
+                                        inputRef.current.value = nextSelected.childNodes[1].innerText
                                     }
-                                    input.value = nextSelected.childNodes[1].innerText
-                                }else if(e.key === "ArrowDown" && curSelectedIndex < listItem.length-1){
-                                    //除掉舊的css跟data
-                                    curSelectedItem.dataset.selected = ""
-                                    curSelectedItem.classList.remove("bg-gray-100")
-
-                                    const nextSelected = listItem[curSelectedIndex+1]
-                                    nextSelected.dataset.selected = "true"
-                                    if(!nextSelected.classList.contains("bg-gray-100")){
-                                        nextSelected.classList.toggle("bg-gray-100")
-                                    }
-                                    input.value = nextSelected.childNodes[1].innerText
                                 }
                             }
                         }
                     }      
                 }else if(e.key === "Enter"){
                     e.preventDefault()
-                    const input = document.querySelector("#default-search") as HTMLInputElement
                     const curSelectedItem: any = document.querySelector("#searchResultList > ul > li > div[data-selected='true']")
                     if(curSelectedItem){
-
-                        input.value = curSelectedItem.childNodes[1].innerText
+                        if(inputRef.current){
+                            inputRef.current.value = curSelectedItem.childNodes[1].innerText
+                            setSearchText(inputRef.current.value)
+                        }
+                        
                         const searchResult = document.querySelector("#searchResult")
                         if(searchResult && !searchResult.classList.contains("hidden")){
                             searchResult.classList.toggle("hidden")
@@ -165,19 +138,39 @@ const SearchBar = () => {
                 }
             })
         }else{
-            //highlight搜尋建議
-            const productTitleList = document.querySelectorAll(".productTitle") as NodeListOf<HTMLElement>
-            const input: HTMLInputElement | null = document.querySelector("#default-search")
-            if(productTitleList && input){
-                productTitleList.forEach(elem => {
-                    const regex = new RegExp(`\\b(${input.value})`, "gi");
-                    elem.innerHTML = elem.innerText.replaceAll(regex,'<span class="text-red-400">$1</span>')
-                })
-            }
             
+            //highlight搜尋建議
+            if(searchResult && searchResult.length > 0){
+                console.log("aaa")
+                const productTitleList = document.querySelectorAll(".productTitle") as NodeListOf<HTMLElement>
+                if(productTitleList && inputRef.current){
+                    productTitleList.forEach(elem => {
+                        const regex = new RegExp(`\\b(${inputRef.current?.value})`, "gi");
+                        elem.innerHTML = elem.innerText.replaceAll(regex,'<span class="text-red-400">$1</span>')
+                    })
+                }
+            }
         }
-    },[searchResult])
+    },[searchResult,searchText])
 
+    useEffect(()=>{
+        if(searchText.length > 0){
+            if(inputRef.current){
+                index
+                .search(inputRef.current.value)
+                .then(({ hits }) => {
+                    if(hits.length > 0){
+                        setSearchResult(hits)
+                    }else{
+                        setSearchResult([])
+                }
+                })
+                .catch(err => {
+                    // console.log(err);
+                });
+            }
+        }
+    },[searchText])
 
     function handleMouseEnter(e: React.MouseEvent<HTMLDivElement, MouseEvent>){
         if(e.currentTarget){ 
@@ -204,8 +197,10 @@ const SearchBar = () => {
 
         e.currentTarget.dataset.selected = "true"
 
-        const input = document.querySelector("#default-search") as HTMLInputElement
-        input.value = (e.currentTarget.childNodes[1] as HTMLElement).innerText
+        if(inputRef.current){
+            inputRef.current.value = (e.currentTarget.childNodes[1] as HTMLElement).innerText
+            setSearchText(inputRef.current.value)
+        }   
         const searchResult = document.querySelector("#searchResult")
         if(searchResult && !searchResult.classList.contains("hidden")){
             searchResult.classList.toggle("hidden")
@@ -222,7 +217,7 @@ const SearchBar = () => {
                         <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                             <svg aria-hidden="true" className="w-5 h-5 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                         </div>
-                        <input type="search" id="default-search" className="block w-full p-3 pl-10 text-base text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500" placeholder="Search" required  autoComplete="off"/>
+                        <input type="search" ref={inputRef} id="default-search" className="block w-full p-3 pl-10 text-base text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500" placeholder="Search" required  autoComplete="off"/>
                     </div>
                 </form>
                 {
